@@ -12500,3 +12500,172 @@ Take Profits: 1 orders placed
 2026-06-29 15:15:01,883 - trade_executor - INFO - HyperLiquid SDK initialized successfully (testnet)
 2026-06-29 15:15:01,884 - trade_executor - INFO - Loaded 3 open trades from state
 2026-06-29 15:19:17,954 - websocket - ERROR - fin=1 opcode=8 data=b'\x03\xe8Expired' - goodbye
+2026-06-29 15:23:05,282 - trade_executor - INFO - TradeExecutor using provided risk config: $1000.00 capital, $20.00 risk per trade (2.0%), 3.0x leverage
+2026-06-29 15:23:08,090 - trade_executor - INFO - HyperLiquid SDK initialized successfully (testnet)
+2026-06-29 15:23:08,091 - trade_executor - INFO - Loaded 3 open trades from state
+2026-06-29 15:23:09,148 - websocket - INFO - Websocket connected
+2026-06-29 15:23:10,406 - trade_executor - INFO - Position closed on HyperLiquid (no fill info): BTC
+2026-06-29 15:23:10,675 - trade_executor - ERROR - API request failed: 422 Client Error: Unprocessable Entity for url: https://api.hyperliquid-testnet.xyz/exchange
+2026-06-29 15:23:10,675 - trade_executor - ERROR - Response body: Failed to deserialize the JSON body into the target type
+2026-06-29 15:23:10,675 - trade_executor - ERROR - Request: {
+  "action": {
+    "type": "cancel",
+    "cancels": [
+      {
+        "coin": "BTC",
+        "oid": 55736302671
+      }
+    ]
+  },
+  "nonce": 1782735790406,
+  "signature": "cf4e940c453175070f9ac96b4d051c066ac1ced45c42b1b6521dd9c79caf0b455fc7b22e0001fe662dc91b6f18e72a3e9963b5a08df6a6d65d1822a3452028ae1b"
+}
+2026-06-29 15:23:10,676 - trade_executor - ERROR - Cancel order failed: 422 Client Error: Unprocessable Entity for url: https://api.hyperliquid-testnet.xyz/exchange
+2026-06-29 15:23:10,676 - trade_executor - WARNING - Failed to cancel SL order 55736302671: 422 Client Error: Unprocessable Entity for url: https://api.hyperliquid-testnet.xyz/exchange
+2026-06-29 15:23:10,943 - trade_executor - ERROR - API request failed: 422 Client Error: Unprocessable Entity for url: https://api.hyperliquid-testnet.xyz/exchange
+2026-06-29 15:23:10,943 - trade_executor - ERROR - Response body: Failed to deserialize the JSON body into the target type
+2026-06-29 15:23:10,943 - trade_executor - ERROR - Request: {
+  "action": {
+    "type": "cancel",
+    "cancels": [
+      {
+        "coin": "BTC",
+        "oid": 55736304241
+      }
+    ]
+  },
+  "nonce": 1782735790676,
+  "signature": "5eb0bbfe8fd523b5e93a5af97ed072ad397f0d6fa4f47f03a8665ca4b1a0687d549f03d3982fbc556a02c2e7a192d12ce9b8c6c1524d59f4f064c252d0061c3f1c"
+}
+2026-06-29 15:23:10,943 - trade_executor - ERROR - Cancel order failed: 422 Client Error: Unprocessable Entity for url: https://api.hyperliquid-testnet.xyz/exchange
+2026-06-29 15:23:10,943 - trade_executor - WARNING - Failed to cancel TP order 55736304241: 422 Client Error: Unprocessable Entity for url: https://api.hyperliquid-testnet.xyz/exchange
+2026-06-29 15:23:10,943 - trade_executor - INFO - 
+=== POSITION CLOSED [LOSS] ===
+Symbol: BTC
+Side: LONG
+Entry: $60,370.00
+Exit: $59,043.50
+Total P&L: $-1.21 (-2.30%)
+Reason: hyperliquid_closed
+==========================
+        
+2026-06-29 15:23:12,472 - signal_integrator - INFO - Have short scalp position in BTC from 'fvg_proximity', but new long scalp signal from 'fvg_proximity' - allowing
+2026-06-29 15:23:12,472 - signal_integrator - INFO - 
+============================================================
+EXECUTING SIGNAL
+============================================================
+Coin: BTC
+Action: BUY
+Confidence: 95.00%
+Strategy: fvg_proximity
+Test Mode: False
+Dry Run: False
+============================================================
+        
+2026-06-29 15:23:14,517 - trade_executor - INFO - TradeExecutor using provided risk config: $879.97 capital, $17.60 risk per trade (2.0%), 3x leverage
+2026-06-29 15:23:16,894 - trade_executor - INFO - HyperLiquid SDK initialized successfully (testnet)
+2026-06-29 15:23:16,896 - trade_executor - INFO - Loaded 2 open trades from state
+2026-06-29 15:23:16,896 - trade_executor - INFO - [LIVE MODE] Opening long position in BTC (SL: 1.5%, TP: 3.0%)
+2026-06-29 15:23:16,896 - trade_executor - INFO - Margin capped at 2% (17.60 USDC) for risk management
+2026-06-29 15:23:16,896 - trade_executor - INFO - Position calc: size=0.00087, value=$52.72, margin=$17.57, risk=$17.60, stop_dist=1.50%, leverage=3x
+2026-06-29 15:23:17,391 - trade_executor - INFO - Using aggressive entry price: $59,339.00 (with 0.5% slippage)
+2026-06-29 15:23:19,005 - trade_executor - INFO - Set leverage to 3x for BTC
+2026-06-29 15:23:20,269 - trade_executor - INFO - Order submitted: BTC BUY 0.00087 @ $59339
+2026-06-29 15:23:20,270 - trade_executor - INFO - Order placed on exchange: BTC BUY 0.00087 @ $59,339.00
+2026-06-29 15:23:21,787 - trade_executor - INFO - Trigger order submitted: BTC SL 0.00087 @ trigger=$59684
+2026-06-29 15:23:21,787 - trade_executor - INFO - SL trigger order placed: BTC @ $59684.00 (oid=55736803867)
+2026-06-29 15:23:23,694 - trade_executor - INFO - Trigger order submitted: BTC TP 0.00087 @ trigger=$62411
+2026-06-29 15:23:23,695 - trade_executor - INFO - TP1 trigger order placed: BTC @ $62411.00 (oid=55736804374)
+2026-06-29 15:23:24,195 - trade_executor - WARNING - Could not verify fill (proceeding anyway): 'HyperliquidClient' object has no attribute 'get_fills'
+2026-06-29 15:23:24,208 - trade_executor - INFO - 
+=== HYPERLIQUID ORDERS PLACED & VERIFIED ===
+Entry: BTC long @ $60593.00 (oid=55736803122)
+Stop Loss: $59684.00 (oid=55736803867)
+Take Profits: 1 orders placed
+=================================
+            
+2026-06-29 15:33:16,927 - websocket - ERROR - fin=1 opcode=8 data=b'\x03\xe8Expired' - goodbye
+2026-06-29 15:38:05,953 - trade_executor - INFO - TradeExecutor using provided risk config: $1000.00 capital, $20.00 risk per trade (2.0%), 3.0x leverage
+2026-06-29 15:38:08,870 - trade_executor - INFO - HyperLiquid SDK initialized successfully (testnet)
+2026-06-29 15:38:08,872 - trade_executor - INFO - Loaded 3 open trades from state
+2026-06-29 15:38:09,940 - websocket - INFO - Websocket connected
+2026-06-29 15:38:11,270 - trade_executor - INFO - Position closed on HyperLiquid (no fill info): BTC
+2026-06-29 15:38:11,550 - trade_executor - ERROR - API request failed: 422 Client Error: Unprocessable Entity for url: https://api.hyperliquid-testnet.xyz/exchange
+2026-06-29 15:38:11,550 - trade_executor - ERROR - Response body: Failed to deserialize the JSON body into the target type
+2026-06-29 15:38:11,550 - trade_executor - ERROR - Request: {
+  "action": {
+    "type": "cancel",
+    "cancels": [
+      {
+        "coin": "BTC",
+        "oid": 55736803867
+      }
+    ]
+  },
+  "nonce": 1782736691270,
+  "signature": "427815201da7d5f5269021e0990a80791cae066f29ba5222b862ae58e96a84ac266fdc8c4fef78a15e7ad21201852d3726f8410b3fe3b279812ff35c3c00f8ce1b"
+}
+2026-06-29 15:38:11,551 - trade_executor - ERROR - Cancel order failed: 422 Client Error: Unprocessable Entity for url: https://api.hyperliquid-testnet.xyz/exchange
+2026-06-29 15:38:11,551 - trade_executor - WARNING - Failed to cancel SL order 55736803867: 422 Client Error: Unprocessable Entity for url: https://api.hyperliquid-testnet.xyz/exchange
+2026-06-29 15:38:12,095 - trade_executor - ERROR - API request failed: 422 Client Error: Unprocessable Entity for url: https://api.hyperliquid-testnet.xyz/exchange
+2026-06-29 15:38:12,095 - trade_executor - ERROR - Response body: Failed to deserialize the JSON body into the target type
+2026-06-29 15:38:12,095 - trade_executor - ERROR - Request: {
+  "action": {
+    "type": "cancel",
+    "cancels": [
+      {
+        "coin": "BTC",
+        "oid": 55736804374
+      }
+    ]
+  },
+  "nonce": 1782736691551,
+  "signature": "582397d3015b2ce4d77a8a01d24f56225a7f967212b960aa68d336de38b79416375cb81e22c69a1d8a1eada09309beed1d32402f3e92e4220c0364a88a8393fe1b"
+}
+2026-06-29 15:38:12,096 - trade_executor - ERROR - Cancel order failed: 422 Client Error: Unprocessable Entity for url: https://api.hyperliquid-testnet.xyz/exchange
+2026-06-29 15:38:12,096 - trade_executor - WARNING - Failed to cancel TP order 55736804374: 422 Client Error: Unprocessable Entity for url: https://api.hyperliquid-testnet.xyz/exchange
+2026-06-29 15:38:12,096 - trade_executor - INFO - 
+=== POSITION CLOSED [LOSS] ===
+Symbol: BTC
+Side: LONG
+Entry: $60,593.00
+Exit: $58,777.00
+Total P&L: $-1.63 (-3.10%)
+Reason: hyperliquid_closed
+==========================
+        
+2026-06-29 15:38:13,700 - signal_integrator - INFO - 
+============================================================
+EXECUTING SIGNAL
+============================================================
+Coin: BTC
+Action: BUY
+Confidence: 56.00%
+Strategy: momentum_accel
+Test Mode: False
+Dry Run: False
+============================================================
+        
+2026-06-29 15:38:15,842 - trade_executor - INFO - TradeExecutor using provided risk config: $878.80 capital, $17.58 risk per trade (2.0%), 3x leverage
+2026-06-29 15:38:18,777 - trade_executor - INFO - HyperLiquid SDK initialized successfully (testnet)
+2026-06-29 15:38:18,779 - trade_executor - INFO - Loaded 2 open trades from state
+2026-06-29 15:38:18,779 - trade_executor - INFO - [LIVE MODE] Opening long position in BTC (SL: 2.5%, TP: 5.0%)
+2026-06-29 15:38:18,779 - trade_executor - INFO - Margin capped at 2% (17.58 USDC) for risk management
+2026-06-29 15:38:18,779 - trade_executor - INFO - Position calc: size=0.00087, value=$52.68, margin=$17.56, risk=$17.58, stop_dist=2.50%, leverage=3x
+2026-06-29 15:38:19,289 - trade_executor - INFO - Using aggressive entry price: $59,071.00 (with 0.5% slippage)
+2026-06-29 15:38:20,642 - trade_executor - INFO - Set leverage to 3x for BTC
+2026-06-29 15:38:21,829 - trade_executor - INFO - Order submitted: BTC BUY 0.00087 @ $59071
+2026-06-29 15:38:21,830 - trade_executor - INFO - Order placed on exchange: BTC BUY 0.00087 @ $59,071.00
+2026-06-29 15:38:23,438 - trade_executor - INFO - Trigger order submitted: BTC SL 0.00087 @ trigger=$59041
+2026-06-29 15:38:23,439 - trade_executor - INFO - SL trigger order placed: BTC @ $59041.00 (oid=55737212693)
+2026-06-29 15:38:25,437 - trade_executor - INFO - Trigger order submitted: BTC TP 0.00087 @ trigger=$63583
+2026-06-29 15:38:25,438 - trade_executor - INFO - TP1 trigger order placed: BTC @ $63583.00 (oid=55737214025)
+2026-06-29 15:38:25,938 - trade_executor - WARNING - Could not verify fill (proceeding anyway): 'HyperliquidClient' object has no attribute 'get_fills'
+2026-06-29 15:38:25,959 - trade_executor - INFO - 
+=== HYPERLIQUID ORDERS PLACED & VERIFIED ===
+Entry: BTC long @ $60555.00 (oid=55737211744)
+Stop Loss: $59041.00 (oid=55737212693)
+Take Profits: 1 orders placed
+=================================
+            
+2026-06-29 15:48:24,609 - websocket - ERROR - fin=1 opcode=8 data=b'\x03\xe8Expired' - goodbye

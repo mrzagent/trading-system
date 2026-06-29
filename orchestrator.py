@@ -23,7 +23,7 @@ from signal_integrator import SignalIntegrator
 from trade_executor import RiskConfig
 from db import get_conn, fetch_recent, COINS, signal_envelope, save_signal
 from candle_gate import should_act, mark_acted
-from strategy_risk_config import get_strategy_risk_params, StrategyRiskParams
+from strategies.strategy_risk_config import get_strategy_risk_params, StrategyRiskParams
 
 
 # Path to strategy state file (managed by dashboard)
@@ -137,18 +137,18 @@ def is_strategy_enabled(name: str, state: dict) -> bool:
     return state.get(name, True)
 
 # Import all strategies
-from strategy_rsi import analyse as rsi_analyse, STRATEGY as RSI_STRATEGY
-from strategy_momentum import analyse as momentum_analyse, STRATEGY as MOM_STRATEGY
-from strategy_fvg import analyse as fvg_analyse, STRATEGY as FVG_STRATEGY
-from strategy_volume import analyse as volume_analyse, STRATEGY as VOL_STRATEGY
+from strategies.strategy_rsi import analyse as rsi_analyse, STRATEGY as RSI_STRATEGY
+from strategies.strategy_momentum import analyse as momentum_analyse, STRATEGY as MOM_STRATEGY
+from strategies.strategy_fvg import analyse as fvg_analyse, STRATEGY as FVG_STRATEGY
+from strategies.strategy_volume import analyse as volume_analyse, STRATEGY as VOL_STRATEGY
 
 # New strategies
-from strategy_trend_breakout import analyse as trend_analyse, STRATEGY as TREND_STRATEGY
-from strategy_mean_reversion import analyse as meanrev_analyse, STRATEGY as MEANREV_STRATEGY
-from strategy_momentum_accel import analyse as accel_analyse, STRATEGY as ACCEL_STRATEGY
-from strategy_vwap_reversion import analyse as vwap_analyse, STRATEGY as VWAP_STRATEGY
-from strategy_momentum_scalper import analyse as scalper_analyse, STRATEGY as SCALPER_STRATEGY
-from strategy_pullback_scalper import analyse as pullback_analyse, STRATEGY as PULLBACK_STRATEGY
+from strategies.strategy_trend_breakout import analyse as trend_analyse, STRATEGY as TREND_STRATEGY
+from strategies.strategy_mean_reversion import analyse as meanrev_analyse, STRATEGY as MEANREV_STRATEGY
+from strategies.strategy_momentum_accel import analyse as accel_analyse, STRATEGY as ACCEL_STRATEGY
+from strategies.strategy_vwap_reversion import analyse as vwap_analyse, STRATEGY as VWAP_STRATEGY
+from strategies.strategy_momentum_scalper import analyse as scalper_analyse, STRATEGY as SCALPER_STRATEGY
+from strategies.strategy_pullback_scalper import analyse as pullback_analyse, STRATEGY as PULLBACK_STRATEGY
 
 
 ORCHESTRATOR_STRATEGY = "quorum_view"

@@ -77,40 +77,40 @@
     "BTC": {
       "symbol": "BTC",
       "side": "long",
-      "entry_price": 60593.0,
+      "entry_price": 60555.0,
       "position_size": 0.00087,
       "original_size": 0.00087,
-      "position_value": 52.71591,
-      "original_value": 52.71591,
-      "margin_required": 17.57197,
+      "position_value": 52.68285,
+      "original_value": 52.68285,
+      "margin_required": 17.560950000000002,
       "leverage": 3,
-      "stop_loss": 59684,
+      "stop_loss": 59041,
       "take_profits": [
         {
           "label": "TP1",
-          "level_pct": 0.03,
-          "price": 62411,
+          "level_pct": 0.05,
+          "price": 63583,
           "close_pct": 1.0,
           "hit": false
         }
       ],
-      "risk_amount": 16.719392247000002,
-      "order_id": 55736803122,
+      "risk_amount": 9.8425158944,
+      "order_id": 55737211744,
       "status": "open",
-      "signal_time": "2026-06-29T15:23:24.195998",
-      "order_placed_time": "2026-06-29T15:23:24.195998",
-      "entry_time": "2026-06-29T15:23:24.195998",
+      "signal_time": "2026-06-29T15:38:25.938537",
+      "order_placed_time": "2026-06-29T15:38:25.938537",
+      "entry_time": "2026-06-29T15:38:25.938537",
       "exit_time": null,
       "exit_price": null,
       "pnl": 0.0,
       "exit_reason": null,
       "partial_closes": [],
       "remaining_pct": 1.0,
-      "sl_order_id": 55736803867,
+      "sl_order_id": 55737212693,
       "tp_order_ids": [
-        55736804374
+        55737214025
       ],
-      "strategy": "fvg_proximity"
+      "strategy": "momentum_accel"
     }
   },
   "trade_history": [
@@ -4267,7 +4267,45 @@
         55736304241
       ],
       "strategy": "fvg_proximity"
+    },
+    {
+      "symbol": "BTC",
+      "side": "long",
+      "entry_price": 60593.0,
+      "position_size": 0.00087,
+      "original_size": 0.00087,
+      "position_value": 52.71591,
+      "original_value": 52.71591,
+      "margin_required": 17.57197,
+      "leverage": 3,
+      "stop_loss": 59684,
+      "take_profits": [
+        {
+          "label": "TP1",
+          "level_pct": 0.03,
+          "price": 62411,
+          "close_pct": 1.0,
+          "hit": false
+        }
+      ],
+      "risk_amount": 16.719392247000002,
+      "order_id": 55736803122,
+      "status": "closed",
+      "signal_time": "2026-06-29T15:23:24.195998",
+      "order_placed_time": "2026-06-29T15:23:24.195998",
+      "entry_time": "2026-06-29T15:23:24.195998",
+      "exit_time": "2026-06-29T15:38:12.096259",
+      "exit_price": 58777.0,
+      "pnl": -1.63263591,
+      "exit_reason": "hyperliquid_closed",
+      "partial_closes": [],
+      "remaining_pct": 1.0,
+      "sl_order_id": 55736803867,
+      "tp_order_ids": [
+        55736804374
+      ],
+      "strategy": "fvg_proximity"
     }
   ],
-  "saved_at": "2026-06-29T15:23:24.196061"
+  "saved_at": "2026-06-29T15:38:25.938601"
 }

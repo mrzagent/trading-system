@@ -12,7 +12,7 @@ import psycopg2.extras
 
 sys.path.insert(0, r"D:\dev\trading")
 from db import get_conn, COINS
-from strategy_pullback_scalper import (
+from strategies.strategy_pullback_scalper import (
     calculate_ema, calculate_rsi, get_swing_high, get_swing_low,
     EMA_FAST, EMA_SLOW, RSI_PERIOD, RSI_OVERSOLD, RSI_OVERBOUGHT, MIN_ROWS
 )
