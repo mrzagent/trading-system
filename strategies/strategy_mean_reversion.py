@@ -491,7 +491,7 @@ if __name__ == "__main__":
 # -- Strategy metadata class (used by strategy_registry.py) -----------------
 import sys as _sys
 _sys.path.insert(0, r"D:\dev\trading")
-from strategies.strategy_base import BaseStrategy as _BaseStrategy
+from strategy_base import BaseStrategy as _BaseStrategy
 
 
 class MeanReversionStrategy(_BaseStrategy):

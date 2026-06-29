@@ -23,7 +23,7 @@ from signal_integrator import SignalIntegrator
 from trade_executor import RiskConfig
 from db import get_conn, fetch_recent, COINS, signal_envelope, save_signal
 from candle_gate import should_act, mark_acted
-from strategies.strategy_risk_config import get_strategy_risk_params, StrategyRiskParams
+from strategy_risk_config import get_strategy_risk_params, StrategyRiskParams
 
 
 # Path to strategy state file (managed by dashboard)

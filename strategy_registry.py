@@ -24,7 +24,7 @@ _TRADING_DIR = Path(__file__).parent
 if str(_TRADING_DIR) not in sys.path:
     sys.path.insert(0, str(_TRADING_DIR))
 
-from strategies.strategy_base import BaseStrategy
+from strategy_base import BaseStrategy
 
 # ── Registered strategy modules ────────────────────────────────────────────
 # Add new strategy modules here when they implement BaseStrategy.

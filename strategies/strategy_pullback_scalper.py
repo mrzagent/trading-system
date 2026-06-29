@@ -402,7 +402,7 @@ if __name__ == "__main__":
 # ââ Strategy metadata class (used by strategy_registry.py) âââââââââââââââââââ
 import sys as _sys
 _sys.path.insert(0, r"D:\dev\trading")
-from strategies.strategy_base import BaseStrategy as _BaseStrategy
+from strategy_base import BaseStrategy as _BaseStrategy
 
 
 class PullbackScalperStrategy(_BaseStrategy):
