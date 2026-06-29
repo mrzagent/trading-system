@@ -210,6 +210,12 @@ class SignalIntegrator:
                     break
         return False
     
+    def _set_cooldown(self, coin: str):
+        """Record trade timestamp for cooldown tracking"""
+        # Cooldown is tracked via signal_history entries
+        # This method exists for compatibility with old code
+        logger.debug(f"Cooldown set for {coin}")
+    
     # Accept all strategy signals (quorum_view + individual strategies)
     ALLOWED_STRATEGIES = [
         'quorum_view',            # Aggregated quorum view (dashboard only, no trades)
