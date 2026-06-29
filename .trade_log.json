@@ -1,0 +1,44 @@
+[
+  {
+    "timestamp": "2026-06-22T05:05:03.777135",
+    "coin": "BTC",
+    "action": "BUY",
+    "confidence": 0.83,
+    "entry_px": 64545.0,
+    "size": 0.00015,
+    "notional": 9.68175,
+    "leverage": 3.0,
+    "sl_px": 61317.75,
+    "tp_px": 70999.5,
+    "sl_oid": null,
+    "tp_oid": null
+  },
+  {
+    "timestamp": "2026-06-22T05:05:10.126876",
+    "coin": "ETH",
+    "action": "BUY",
+    "confidence": 0.87,
+    "entry_px": 1743.45,
+    "size": 0.0057,
+    "notional": 9.937665,
+    "leverage": 3.0,
+    "sl_px": 1656.28,
+    "tp_px": 1917.8,
+    "sl_oid": null,
+    "tp_oid": null
+  },
+  {
+    "timestamp": "2026-06-22T17:09:46.423848",
+    "coin": "ETH",
+    "action": "BUY",
+    "confidence": 0.63,
+    "entry_px": 1772.3,
+    "size": 0.0056,
+    "notional": 9.92488,
+    "leverage": 3.0,
+    "sl_px": 1683.68,
+    "tp_px": 1949.53,
+    "sl_oid": null,
+    "tp_oid": null
+  }
+]

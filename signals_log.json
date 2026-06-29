@@ -1,0 +1,92 @@
+[
+    {
+        "strategy":  "fvg_proximity",
+        "coin":  "BTC",
+        "action":  "BUY",
+        "confidence":  0.855,
+        "reason":  "Price 67,886.00 within 0.07% of bullish FVG mid 67,839.00",
+        "generated_at":  "2026-03-30T12:31:34.324598+00:00"
+    },
+    {
+        "strategy":  "fvg_proximity",
+        "coin":  "ETH",
+        "action":  "SELL",
+        "confidence":  0.891,
+        "reason":  "Price 2,071.40 within 0.01% of bearish FVG mid 2,071.68",
+        "generated_at":  "2026-03-30T12:31:34.325017+00:00"
+    },
+    {
+        "strategy":  "fvg_proximity",
+        "coin":  "SOL",
+        "action":  "BUY",
+        "confidence":  0.882,
+        "reason":  "Price 84.22 within 0.03% of bullish FVG mid 84.19",
+        "generated_at":  "2026-03-30T12:31:34.325402+00:00"
+    },
+    {
+        "timestamp":  "2026-03-30T12:33:01Z",
+        "strategy":  "rsi_mean_reversion",
+        "coin":  "BTC",
+        "action":  "HOLD",
+        "confidence":  0.07,
+        "reason":  "RSI 58.9 - neutral zone",
+        "price":  67567,
+        "rsi":  58.87
+    },
+    {
+        "timestamp":  "2026-03-30T12:33:01Z",
+        "strategy":  "rsi_mean_reversion",
+        "coin":  "ETH",
+        "action":  "SELL",
+        "confidence":  0.8439,
+        "reason":  "RSI 72.8 - overbought (threshold 65.0)",
+        "price":  2065.51,
+        "rsi":  72.77
+    },
+    {
+        "timestamp":  "2026-03-30T12:33:01Z",
+        "strategy":  "rsi_mean_reversion",
+        "coin":  "SOL",
+        "action":  "HOLD",
+        "confidence":  0.07,
+        "reason":  "RSI 58.3 - neutral zone",
+        "price":  84.12,
+        "rsi":  58.3
+    },
+    {
+        "timestamp":  "2026-03-30T12:48:01Z",
+        "strategy":  "rsi_mean_reversion",
+        "coin":  "BTC",
+        "action":  "SELL",
+        "confidence":  0.1253,
+        "reason":  "RSI 66.8 — overbought (threshold 65.0)",
+        "price":  67637.0,
+        "rsi":  66.79,
+        "sustained":  false,
+        "candle":  "2026-03-30T12:45:00+00:00"
+    },
+    {
+        "timestamp":  "2026-03-30T12:48:01Z",
+        "strategy":  "rsi_mean_reversion",
+        "coin":  "ETH",
+        "action":  "SELL",
+        "confidence":  1.0,
+        "reason":  "RSI 92.2 — overbought (threshold 65.0)",
+        "price":  2070.06,
+        "rsi":  92.21,
+        "sustained":  true,
+        "candle":  "2026-03-30T12:45:00+00:00"
+    },
+    {
+        "timestamp":  "2026-03-30T12:48:01Z",
+        "strategy":  "rsi_mean_reversion",
+        "coin":  "SOL",
+        "action":  "SELL",
+        "confidence":  0.7,
+        "reason":  "RSI 97.1 — overbought (threshold 65.0)",
+        "price":  84.18,
+        "rsi":  97.06,
+        "sustained":  false,
+        "candle":  "2026-03-30T12:45:00+00:00"
+    }
+]

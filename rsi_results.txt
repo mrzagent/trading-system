@@ -1,0 +1,1 @@
+RSI Strategy Result: Candle not closed yet; Action: HOLD.

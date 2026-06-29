@@ -1,0 +1,12 @@
+{
+  "fvg_proximity": true,
+  "momentum_rsi": false,
+  "rsi_mean_reversion": true,
+  "volume_spike": true,
+  "trend_breakout": true,
+  "mean_reversion": true,
+  "momentum_accel": true,
+  "vwap_reversion": true,
+  "momentum_scalper": false,
+  "pullback_scalper": false
+}

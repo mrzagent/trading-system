@@ -1,0 +1,47 @@
+[
+  {
+    "strategy": "rsi_mean_reversion",
+    "coin": "BTC",
+    "action": "SELL",
+    "confidence": 0.85,
+    "reason": "RSI(15m) 75.2 overbought — 1h approaching (1h≈61.0)",
+    "meta": {
+      "rsi_15m": 75.16,
+      "rsi_1h": 61.03,
+      "price": 66800.0,
+      "candle": "2026-06-16T09:10:00+00:00",
+      "confluence": "1h approaching"
+    },
+    "generated_at": "2026-06-16T09:12:16.979443+00:00"
+  },
+  {
+    "strategy": "rsi_mean_reversion",
+    "coin": "ETH",
+    "action": "SELL",
+    "confidence": 0.85,
+    "reason": "RSI(15m) 83.6 overbought — 1h approaching (1h≈63.5)",
+    "meta": {
+      "rsi_15m": 83.62,
+      "rsi_1h": 63.53,
+      "price": 1801.74,
+      "candle": "2026-06-16T09:10:00+00:00",
+      "confluence": "1h approaching"
+    },
+    "generated_at": "2026-06-16T09:12:16.981077+00:00"
+  },
+  {
+    "strategy": "rsi_mean_reversion",
+    "coin": "SOL",
+    "action": "SELL",
+    "confidence": 1.0,
+    "reason": "RSI(15m) 81.4 overbought — both TFs overbought (1h≈72.7)",
+    "meta": {
+      "rsi_15m": 81.37,
+      "rsi_1h": 72.7,
+      "price": 75.33,
+      "candle": "2026-06-16T09:10:00+00:00",
+      "confluence": "both TFs overbought"
+    },
+    "generated_at": "2026-06-16T09:12:16.982633+00:00"
+  }
+]

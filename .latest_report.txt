@@ -1,0 +1,16 @@
+TRADING REPORT
+Monday, June 29 - 15:03 (Bucharest)
+
+BTC $59,713
+ETH $1,569
+SOL $72.31
+
+Latest Signals (Last Hour)
+BTC | SELL @ 95% | fvg_proximity
+ETH | BUY @ 95% | fvg_proximity
+SOL | BUY @ 95% | fvg_proximity
+
+Open Positions: 3
+ETH | long | 3x | $1,571 | PnL - $0.21
+SOL | long | 3x | $72.39 | PnL - $0.29
+BTC | short | 3x | $59,878 | PnL + $1.07

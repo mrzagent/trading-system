@@ -1,0 +1,26 @@
+[
+  {
+    "strategy": "fvg_proximity",
+    "coin": "BTC",
+    "action": "BUY",
+    "confidence": 0.864,
+    "reason": "Price 64,074.00 within 0.06% of bullish FVG mid 64,038.58",
+    "generated_at": "2026-06-14T16:14:46.946163+00:00"
+  },
+  {
+    "strategy": "fvg_proximity",
+    "coin": "ETH",
+    "action": "BUY",
+    "confidence": 0.882,
+    "reason": "Price 1,663.73 within 0.03% of bullish FVG mid 1,663.31",
+    "generated_at": "2026-06-14T16:14:46.946915+00:00"
+  },
+  {
+    "strategy": "fvg_proximity",
+    "coin": "SOL",
+    "action": "BUY",
+    "confidence": 0.81,
+    "reason": "Price 67.57 within 0.15% of bullish FVG mid 67.47",
+    "generated_at": "2026-06-14T16:14:46.947626+00:00"
+  }
+]

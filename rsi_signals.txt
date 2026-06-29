@@ -1,0 +1,9 @@
+Coin: BTC, Action: BUY, Confidence: 0.4736, Reason: RSI 32.5 — oversold (threshold 35.0)
+
+Coin: ETH, Action: BUY, Confidence: 0.4526, Reason: RSI 32.8 — oversold (threshold 35.0)
+
+Coin: SOL, Action: BUY, Confidence: 0.4456, Reason: RSI 32.9 — oversold (threshold 35.0)
+--- 2026-03-30T12:33:01Z ---
+Coin: BTC, Action: HOLD, Confidence: 0.07, Reason: RSI 58.9 - neutral zone
+Coin: ETH, Action: SELL, Confidence: 0.8439, Reason: RSI 72.8 - overbought (threshold 65.0)
+Coin: SOL, Action: HOLD, Confidence: 0.07, Reason: RSI 58.3 - neutral zone

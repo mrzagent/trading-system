@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Trading System Flow</title>
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; margin: 40px; background: #f8f9fa; }
+    h1 { text-align: center; color: #1a1a2e; }
+    .diagram { background: white; border-radius: 12px; padding: 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    svg { display: block; margin: 0 auto; }
+    .legend { margin-top: 20px; padding: 15px; background: #f1f3f4; border-radius: 8px; }
+    .legend-item { display: inline-block; margin-right: 20px; }
+    .legend-color { display: inline-block; width: 16px; height: 16px; border-radius: 3px; vertical-align: middle; margin-right: 6px; }
+  </style>
+</head>
+<body>
+  <h1>Trading System Architecture Flow</h1>
+  <div class="diagram">
+    <svg width="900" height="700" viewBox="0 0 900 700">
+      <!-- Definitions -->
+      <defs>
+        <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L9,3 z" fill="#5f6368"/>
+        </marker>
+        <marker id="arrow-green" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L9,3 z" fill="#34a853"/>
+        </marker>
+      </defs>
+      
+      <!-- External Data Source -->
+      <rect x="50" y="50" width="140" height="60" rx="6" fill="#e8f0fe" stroke="#4285f4" stroke-width="2"/>
+      <text x="120" y="75" text-anchor="middle" font-size="13" font-weight="600" fill="#1a73e8">Price Feeds</text>
+      <text x="120" y="92" text-anchor="middle" font-size="11" fill="#5f6368">Binance/HyperLiquid</text>
+      
+      <!-- Database -->
+      <rect x="50" y="180" width="140" height="80" rx="6" fill="#fce8e6" stroke="#ea4335" stroke-width="2"/>
+      <text x="120" y="205" text-anchor="middle" font-size="13" font-weight="600" fill="#d93025">PostgreSQL</text>
+      <text x="120" y="222" text-anchor="middle" font-size="10" fill="#5f6368">trading_prices</text>
+      <text x="120" y="236" text-anchor="middle" font-size="10" fill="#5f6368">trading_signals</text>
+      <text x="120" y="250" text-anchor="middle" font-size="10" fill="#5f6368">(5min/1h/4h)</text>
+      
+      <!-- Candle Collector -->
+      <rect x="280" y="60" width="140" height="50" rx="6" fill="#e6f4ea" stroke="#34a853" stroke-width="2"/>
+      <text x="350" y="82" text-anchor="middle" font-size="12" font-weight="600" fill="#137333">candle_collector.py</text>
+      <text x="350" y="98" text-anchor="middle" font-size="10" fill="#5f6368">Ingests OHLCV</text>
+      
+      <!-- Strategies (10 boxes) -->
+      <rect x="280" y="160" width="110" height="35" rx="4" fill="#e8f0fe" stroke="#4285f4" stroke-width="1.5"/>
+      <text x="335" y="182" text-anchor="middle" font-size="10" fill="#1a73e8">strategy_rsi (4h)</text>
+      
+      <rect x="400" y="160" width="110" height="35" rx="4" fill="#e8f0fe" stroke="#4285f4" stroke-width="1.5"/>
+      <text x="455" y="182" text-anchor="middle" font-size="10" fill="#1a73e8">strategy_momentum (1h)</text>
+      
+      <rect x="520" y="160" width="110" height="35" rx="4" fill="#e8f0fe" stroke="#4285f4" stroke-width="1.5"/>
+      <text x="575" y="182" text-anchor="middle" font-size="10" fill="#1a73e8">strategy_fvg (5min)</text>
+      
+      <rect x="640" y="160" width="110" height="35" rx="4" fill="#e8f0fe" stroke="#4285f4" stroke-width="1.5"/>
+      <text x="695" y="182" text-anchor="middle" font-size="10" fill="#1a73e8">strategy_volume (5min)</text>
+      
+      <rect x="280" y="200" width="110" height="35" rx="4" fill="#e8f0fe" stroke="#4285f4" stroke-width="1.5"/>
+      <text x="335" y="222" text-anchor="middle" font-size="10" fill="#1a73e8">trend_breakout (4h)</text>
+      
+      <rect x="400" y="200" width="110" height="35" rx="4" fill="#e8f0fe" stroke="#4285f4" stroke-width="1.5"/>
+      <text x="455" y="222" text-anchor="middle" font-size="10" fill="#1a73e8">mean_reversion (4h)</text>
+      
+      <rect x="520" y="200" width="110" height="35" rx="4" fill="#e8f0fe" stroke="#4285f4" stroke-width="1.5"/>
+      <text x="575" y="222" text-anchor="middle" font-size="10" fill="#1a73e8">momentum_accel (1h)</text>
+      
+      <rect x="640" y="200" width="110" height="35" rx="4" fill="#e8f0fe" stroke="#4285f4" stroke-width="1.5"/>
+      <text x="695" y="222" text-anchor="middle" font-size="10" fill="#1a73e8">vwap_reversion (5min)</text>
+      
+      <rect x="340" y="240" width="110" height="35" rx="4" fill="#e8f0fe" stroke="#4285f4" stroke-width="1.5"/>
+      <text x="395" y="262" text-anchor="middle" font-size="10" fill="#1a73e8">momentum_scalper (5min)</text>
+      
+      <rect x="460" y="240" width="110" height="35" rx="4" fill="#e8f0fe" stroke="#4285f4" stroke-width="1.5"/>
+      <text x="515" y="262" text-anchor="middle" font-size="10" fill="#1a73e8">pullback_scalper (5min)</text>
+      
+      <!-- Orchestrator -->
+      <rect x="320" y="320" width="200" height="70" rx="8" fill="#fef3e8" stroke="#f9ab00" stroke-width="2"/>
+      <text x="420" y="345" text-anchor="middle" font-size="14" font-weight="600" fill="#b06000">orchestrator.py</text>
+      <text x="420" y="362" text-anchor="middle" font-size="10" fill="#5f6368">Runs every 5 min (cron)</text>
+      <text x="420" y="378" text-anchor="middle" font-size="10" fill="#5f6368">Aggregates + Executes</text>
+      
+      <!-- Signal Integrator -->
+      <rect x="320" y="440" width="200" height="60" rx="8" fill="#e8f0fe" stroke="#4285f4" stroke-width="2"/>
+      <text x="420" y="465" text-anchor="middle" font-size="13" font-weight="600" fill="#1a73e8">signal_integrator.py</text>
+      <text x="420" y="482" text-anchor="middle" font-size="10" fill="#5f6368">Filters: cooldown, strategy</text>
+      
+      <!-- Trade Executor -->
+      <rect x="320" y="540" width="200" height="60" rx="8" fill="#e6f4ea" stroke="#34a853" stroke-width="2"/>
+      <text x="420" y="565" text-anchor="middle" font-size="13" font-weight="600" fill="#137333">trade_executor.py</text>
+      <text x="420" y="582" text-anchor="middle" font-size="10" fill="#5f6368">Places orders, SL/TP</text>
+      
+      <!-- HyperLiquid -->
+      <rect x="600" y="540" width="160" height="80" rx="8" fill="#f3e8fd" stroke="#9334e6" stroke-width="2"/>
+      <text x="680" y="565" text-anchor="middle" font-size="13" font-weight="600" fill="#681da8">HyperLiquid</text>
+      <text x="680" y="582" text-anchor="middle" font-size="10" fill="#5f6368">Testnet</text>
+      <text x="680" y="596" text-anchor="middle" font-size="9" fill="#5f6368">Agent: 0x8982...288</text>
+      <text x="680" y="610" text-anchor="middle" font-size="9" fill="#5f6368">Main: 0x97c4...a00</text>
+      
+      <!-- State Files -->
+      <rect x="50" y="440" width="140" height="100" rx="6" fill="#f1f3f4" stroke="#9aa0a6" stroke-width="1.5"/>
+      <text x="120" y="460" text-anchor="middle" font-size="11" font-weight="600" fill="#5f6368">State Files</text>
+      <text x="120" y="478" text-anchor="middle" font-size="9" fill="#5f6368">.account_settings.json</text>
+      <text x="120" y="492" text-anchor="middle" font-size="9" fill="#5f6368">.strategy_state.json</text>
+      <text x="120" y="506" text-anchor="middle" font-size="9" fill="#5f6368">trade_state.json</text>
+      <text x="120" y="520" text-anchor="middle" font-size="9" fill="#5f6368">signal_trade_history.json</text>
+      <text x="120" y="534" text-anchor="middle" font-size="9" fill="#5f6368">.candle_gate.json</text>
+      
+      <!-- Arrows -->
+      <!-- Price to DB -->
+      <path d="M120,110 L120,180" stroke="#5f6368" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
+      
+      <!-- Collector to DB -->
+      <path d="M280,85 L190,85 L190,180" stroke="#5f6368" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
+      
+      <!-- DB to Strategies -->
+      <path d="M190,220 L280,220" stroke="#5f6368" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
+      
+      <!-- Strategies to Orchestrator -->
+      <path d="M420,275 L420,320" stroke="#5f6368" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
+      
+      <!-- Orchestrator to Integrator -->
+      <path d="M420,390 L420,440" stroke="#5f6368" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
+      
+      <!-- Integrator to Executor -->
+      <path d="M420,500 L420,540" stroke="#5f6368" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
+      
+      <!-- Executor to HyperLiquid -->
+      <path d="M520,570 L600,570" stroke="#34a853" stroke-width="2" fill="none" marker-end="url(#arrow-green)"/>
+      
+      <!-- State to Integrator -->
+      <path d="M190,490 L320,470" stroke="#9aa0a6" stroke-width="1" fill="none" stroke-dasharray="4,2"/>
+      
+      <!-- State to Executor -->
+      <path d="M190,520 L320,570" stroke="#9aa0a6" stroke-width="1" fill="none" stroke-dasharray="4,2"/>
+      
+      <!-- Labels -->
+      <text x="220" y="95" font-size="9" fill="#5f6368">fetch</text>
+      <text x="230" y="210" font-size="9" fill="#5f6368">OHLCV</text>
+      <text x="360" y="300" font-size="9" fill="#5f6368">signals</text>
+      <text x="440" y="415" font-size="9" fill="#5f6368">filtered</text>
+      <text x="440" y="520" font-size="9" fill="#5f6368">execute</text>
+      <text x="560" y="565" font-size="9" fill="#34a853">orders</text>
+      
+      <!-- Title box -->
+      <rect x="280" y="5" width="340" height="35" rx="6" fill="#1a1a2e"/>
+      <text x="450" y="28" text-anchor="middle" font-size="14" font-weight="600" fill="white">Multi-Strategy Trading System</text>
+    </svg>
+    
+    <div class="legend">
+      <div class="legend-item"><span class="legend-color" style="background:#e8f0fe;border:1.5px solid #4285f4;"></span>Data/Processing</div>
+      <div class="legend-item"><span class="legend-color" style="background:#e6f4ea;border:1.5px solid #34a853;"></span>Execution</div>
+      <div class="legend-item"><span class="legend-color" style="background:#fef3e8;border:1.5px solid #f9ab00;"></span>Orchestration</div>
+      <div class="legend-item"><span class="legend-color" style="background:#fce8e6;border:1.5px solid #ea4335;"></span>Storage</div>
+      <div class="legend-item"><span class="legend-color" style="background:#f3e8fd;border:1.5px solid #9334e6;"></span>External</div>
+      <div class="legend-item"><span class="legend-color" style="background:#f1f3f4;border:1.5px solid #9aa0a6;"></span>State</div>
+    </div>
+  </div>
+</body>
+</html>

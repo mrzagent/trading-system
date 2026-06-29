@@ -1,0 +1,65 @@
+[
+  {
+    "strategy": "fvg_proximity",
+    "coin": "BTC",
+    "action": "BUY",
+    "confidence": 0.873,
+    "reason": "Price 64,127.00 within 0.04% of bullish FVG mid 64,101.42",
+    "meta": {
+      "price": 64127.0,
+      "fvg": {
+        "top": 64129.209638871485,
+        "type": "bullish",
+        "bottom": 64073.63667169813,
+        "midpoint": 64101.42,
+        "formed_at": "2026-06-14 16:20 UTC"
+      },
+      "distance_pct": 0.04,
+      "candle": "2026-06-14T16:25:00+00:00",
+      "fvg_count": 5
+    },
+    "generated_at": "2026-06-14T16:29:46.978827+00:00"
+  },
+  {
+    "strategy": "fvg_proximity",
+    "coin": "ETH",
+    "action": "BUY",
+    "confidence": 0.864,
+    "reason": "Price 1,666.27 within 0.06% of bullish FVG mid 1,665.21",
+    "meta": {
+      "price": 1666.27,
+      "fvg": {
+        "top": 1666.1612159267547,
+        "type": "bullish",
+        "bottom": 1664.2579282523889,
+        "midpoint": 1665.21,
+        "formed_at": "2026-06-14 16:20 UTC"
+      },
+      "distance_pct": 0.064,
+      "candle": "2026-06-14T16:25:00+00:00",
+      "fvg_count": 5
+    },
+    "generated_at": "2026-06-14T16:29:46.979492+00:00"
+  },
+  {
+    "strategy": "fvg_proximity",
+    "coin": "SOL",
+    "action": "BUY",
+    "confidence": 0.864,
+    "reason": "Price 67.66 within 0.06% of bullish FVG mid 67.62",
+    "meta": {
+      "price": 67.66,
+      "fvg": {
+        "top": 67.65647045760944,
+        "type": "bullish",
+        "bottom": 67.57669970022002,
+        "midpoint": 67.62,
+        "formed_at": "2026-06-14 16:20 UTC"
+      },
+      "distance_pct": 0.059,
+      "candle": "2026-06-14T16:25:00+00:00",
+      "fvg_count": 5
+    },
+    "generated_at": "2026-06-14T16:29:46.980064+00:00"
+  }
+]

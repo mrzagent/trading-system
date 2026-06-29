@@ -1,0 +1,4 @@
+Time: 2026-03-27 19:53 UTC (Europe/Bucharest)
+Strategy: rsi_mean_reversion
+Action: HOLD
+Reason: candle not closed yet

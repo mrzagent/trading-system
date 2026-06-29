@@ -1,0 +1,970 @@
+=== D:\dev\trading\strategy_rsi.py ===
+#!/usr/bin/env python3
+"""
+strategy_rsi.py — Mean-reversion strategy using RSI(14) with dual-timeframe confluence
+Timeframe : 5-min candle gate (fires every 5-min candle close)
+
+Signal logic (dual-TF):
+  BUY  when RSI(15m) <= 35 (oversold on short term)
+       Confidence boosted when RSI(1h) is also oversold or approaching oversold.
+  SELL when RSI(15m) >= 65 (overbought on short term)
+       Confidence boosted when RSI(1h) is also overbought or approaching overbought.
+  HOLD otherwise
+
+Timeframe approximation (5-min snapshot DB):
+  15m RSI  = most recent row's stored RSI
+  1h RSI   = RSI from ~12 rows ago (12 × 5min = 60min)
+
+Confluence scoring:
+  Both frames agree (strong)      → full confidence
+  15m triggered, 1h approaching   → moderate confidence
+  15m triggered, 1h neutral/opposite → base confidence only
+"""
+import json
+from db import get_conn, fetch_recent, COINS, signal_envelope
+from candle_gate import should_act, mark_acted
+
+STRATEGY       = "rsi_mean_reversion"
+CANDLE_MINUTES = 5       # 5-min gate — fires every candle close
+BUY_THRESHOLD  = 35.0
+SELL_THRESHOLD = 65.0
+# 1h frame: how many 5-min rows back = 1h ago
+TF_1H_ROWS     = 12
+# Buffer for 1h frame: "approaching" oversold/overbought
+BUY_APPROACH   = 45.0    # 1h RSI below this adds moderate bonus
+SELL_APPROACH  = 55.0    # 1h RSI above this adds moderate bonus
+# Fetch enough rows to cover TF_1H_ROWS + some buffer for avg
+FETCH_LIMIT    = TF_1H_ROWS + 10
+
+
+def get_rsi_1h(rows: list) -> float | None:
+    """
+    Approximate 1h RSI: average of the rows from TF_1H_ROWS back to TF_1H_ROWS+4.
+    Averaging a small window reduces single-row noise.
+    rows[-1] is newest, rows[0] is oldest.
+    """
+    start = -(TF_1H_ROWS + 4)
+    end   = -TF_1H_ROWS if TF_1H_ROWS > 0 else None
+    window = rows[start:end]
+    vals = [float(r["rsi"]) for r in window if r.get("rsi") is not None]
+    return round(sum(vals) / len(vals), 2) if vals else None
+
+
+def confluence_score(action: str, rsi_15m: float, rsi_1h: float | None) -> float:
+    """
+    Returns a confluence multiplier [0.0, 1.0] based on how well 1h RSI confirms
+    the 15m signal direction.
+    """
+    if rsi_1h is None:
+        return 0.0  # no bonus — can't confirm
+
+    if action == "BUY":
+        if rsi_1h <= BUY_THRESHOLD:
+            return 0.35   # strong: both frames oversold
+        elif rsi_1h <= BUY_APPROACH:
+            return 0.20   # moderate: 1h approaching oversold
+        else:
+            return 0.0    # no alignment
+    elif action == "SELL":
+        if rsi_1h >= SELL_THRESHOLD:
+            return 0.35   # strong: both frames overbought
+        elif rsi_1h >= SELL_APPROACH:
+            return 0.20   # moderate: 1h approaching overbought
+        else:
+            return 0.0
+    return 0.0
+
+
+def analyse(coin: str, conn, candle_start) -> dict:
+    rows = fetch_recent(conn, coin, limit=FETCH_LIMIT)
+    if not rows:
+        return signal_envelope(STRATEGY, coin, "HOLD", 0.0, "no data")
+
+    # rows[-1] is the most recent row (fetch_recent returns oldest→newest)
+    latest   = rows[-1]
+    rsi_15m  = float(latest["rsi"] or 50)
+    price    = float(latest["price"])
+    rsi_1h   = get_rsi_1h(rows)
+
+    meta_base = {
+        "rsi_15m":  rsi_15m,
+        "rsi_1h":   rsi_1h,
+        "price":    price,
+        "candle":   candle_start.isoformat(),
+    }
+
+    if rsi_15m <= BUY_THRESHOLD:
+        base_conf  = min((BUY_THRESHOLD - rsi_15m) / 10, 1.0) * 0.65
+        conf_bonus = confluence_score("BUY", rsi_15m, rsi_1h)
+        conf       = round(min(base_conf + conf_bonus, 1.0), 3)
+        tf_label   = (
+            "both TFs oversold" if rsi_1h and rsi_1h <= BUY_THRESHOLD else
+            "1h approaching" if rsi_1h and rsi_1h <= BUY_APPROACH else
+            "15m only"
+        )
+        return signal_envelope(
+            STRATEGY, coin, "BUY", conf,
+            f"RSI(15m) {rsi_15m:.1f} oversold — {tf_label} "
+            f"(1h≈{rsi_1h:.1f})" if rsi_1h else f"RSI(15m) {rsi_15m:.1f} oversold",
+            {**meta_base, "confluence": tf_label},
+        )
+
+    if rsi_15m >= SELL_THRESHOLD:
+        base_conf  = min((rsi_15m - SELL_THRESHOLD) / 10, 1.0) * 0.65
+        conf_bonus = confluence_score("SELL", rsi_15m, rsi_1h)
+        conf       = round(min(base_conf + conf_bonus, 1.0), 3)
+        tf_label   = (
+            "both TFs overbought" if rsi_1h and rsi_1h >= SELL_THRESHOLD else
+            "1h approaching" if rsi_1h and rsi_1h >= SELL_APPROACH else
+            "15m only"
+        )
+        return signal_envelope(
+            STRATEGY, coin, "SELL", conf,
+            f"RSI(15m) {rsi_15m:.1f} overbought — {tf_label} "
+            f"(1h≈{rsi_1h:.1f})" if rsi_1h else f"RSI(15m) {rsi_15m:.1f} overbought",
+            {**meta_base, "confluence": tf_label},
+        )
+
+    # Neutral — slight directional lean, no trade signal
+    distance = abs(rsi_15m - 50)
+    lean = "BUY" if rsi_15m < 50 else "SELL"
+    return signal_envelope(
+        STRATEGY, coin, "HOLD", round(distance / 50 * 0.35, 3),
+        f"RSI(15m) {rsi_15m:.1f} — neutral zone"
+        + (f" | 1h≈{rsi_1h:.1f}" if rsi_1h else ""),
+        {**meta_base, "lean": lean},
+    )
+
+
+def main():
+    act, candle_start = should_act(STRATEGY, CANDLE_MINUTES)
+    if not act:
+        print(json.dumps([{"strategy": STRATEGY, "action": "HOLD",
+                           "reason": "candle not closed yet"}]))
+        return
+
+    conn = get_conn()
+    signals = [analyse(coin, conn, candle_start) for coin in COINS]
+    conn.close()
+
+    mark_acted(STRATEGY, candle_start)
+    print(json.dumps(signals, indent=2))
+
+
+if __name__ == "__main__":
+    main()
+
+
+=== D:\dev\trading\strategy_volume.py ===
+#!/usr/bin/env python3
+"""
+strategy_volume.py — Volume spike detection strategy
+Timeframe : 5-min candle gate (fires every 5-min candle close)
+Fires on  : 5-min candle close (candle gate enforced)
+
+Signal logic:
+  BUY  when volume_5m is >2x the 4h rolling average AND recent price direction is positive
+  SELL when volume_5m is >2x the 4h rolling average AND recent price direction is negative
+  HOLD when volume is normal or price direction is flat
+
+Direction is determined from inter-candle price change (current vs ~4h ago),
+NOT from change_24h, which is too coarse.
+
+Uses volume_5m column (actual per-candle volume from CoinGecko total_volumes).
+At 5-min snapshots:
+  LOOKBACK = 48  →  rolling average window  = 48 × 5min = 4h
+  CANDLE_ROWS = 48  →  price delta lookback = ~4h ago
+Requires at least MIN_ROWS snapshots before trusting the average.
+"""
+import json
+from db import get_conn, fetch_recent, COINS, signal_envelope
+from candle_gate import should_act, mark_acted
+
+STRATEGY         = "volume_spike"
+CANDLE_MINUTES   = 5     # 5-min gate — matches data collection cadence
+SPIKE_MULTIPLIER = 2.0   # current volume must be this × rolling avg
+LOOKBACK         = 48    # snapshots for rolling average = 4h at 5-min intervals
+CANDLE_ROWS      = 48    # rows back to measure inter-candle price direction (~4h)
+MIN_ROWS         = 24    # minimum rows before we trust the average (2h of 5-min data)
+
+
+def rolling_avg_volume(rows: list[dict]) -> float:
+    """Average volume_5m of rows[1:LOOKBACK+1] — excludes latest to avoid self-comparison."""
+    sample = rows[1:LOOKBACK + 1]
+    vols   = [float(r["volume_5m"] or 0) for r in sample if r["volume_5m"]]
+    return sum(vols) / len(vols) if vols else 0
+
+
+def inter_candle_change(rows: list[dict]) -> float:
+    """
+    Price % change over the last ~4h (CANDLE_ROWS snapshots).
+    Positive = price moved up. Negative = moved down.
+    Returns 0.0 if not enough history.
+    """
+    if len(rows) <= CANDLE_ROWS:
+        return 0.0
+    current  = float(rows[0]["price"])
+    previous = float(rows[CANDLE_ROWS]["price"])
+    if previous == 0:
+        return 0.0
+    return (current - previous) / previous * 100
+
+
+def analyse(coin: str, conn, candle_start) -> dict:
+    rows = fetch_recent(conn, coin, limit=LOOKBACK + CANDLE_ROWS + 2)
+    if len(rows) < MIN_ROWS:
+        return signal_envelope(STRATEGY, coin, "HOLD", 0.0,
+                               f"insufficient history ({len(rows)} rows, need {MIN_ROWS})")
+
+    latest  = rows[0]
+    price   = float(latest["price"])
+    cur_vol = float(latest["volume_5m"] or 0)
+    avg_vol = rolling_avg_volume(rows)
+    change  = inter_candle_change(rows)   # 4h inter-candle delta (not change_24h)
+
+    if avg_vol == 0:
+        return signal_envelope(STRATEGY, coin, "HOLD", 0.0,
+                               "avg volume is zero — skipping", {"price": price})
+
+    ratio    = cur_vol / avg_vol
+    is_spike = ratio >= SPIKE_MULTIPLIER
+
+    if not is_spike:
+        return signal_envelope(
+            STRATEGY, coin, "HOLD", 0.05,
+            f"Volume {ratio:.2f}x avg — no spike (need {SPIKE_MULTIPLIER}x)",
+            {"price": price, "volume_ratio": round(ratio, 3),
+             "current_vol": cur_vol, "avg_vol": round(avg_vol, 2),
+             "candle": candle_start.isoformat()},
+        )
+
+    # Spike confirmed — direction from inter-candle price change
+    conf = min((ratio - SPIKE_MULTIPLIER) / SPIKE_MULTIPLIER * 0.5 + 0.5, 1.0)
+
+    if change > 0:
+        return signal_envelope(
+            STRATEGY, coin, "BUY", conf,
+            f"Volume spike {ratio:.1f}x avg with +{change:.2f}% 4h move — buying pressure",
+            {"price": price, "volume_ratio": round(ratio, 3),
+             "change_4h": round(change, 3), "current_vol": cur_vol,
+             "avg_vol": round(avg_vol, 2), "candle": candle_start.isoformat()},
+        )
+
+    if change < 0:
+        return signal_envelope(
+            STRATEGY, coin, "SELL", conf,
+            f"Volume spike {ratio:.1f}x avg with {change:.2f}% 4h move — selling pressure",
+            {"price": price, "volume_ratio": round(ratio, 3),
+             "change_4h": round(change, 3), "current_vol": cur_vol,
+             "avg_vol": round(avg_vol, 2), "candle": candle_start.isoformat()},
+        )
+
+    return signal_envelope(
+        STRATEGY, coin, "HOLD", 0.2,
+        f"Volume spike {ratio:.1f}x avg but price flat over 4h — indecision",
+        {"price": price, "volume_ratio": round(ratio, 3),
+         "candle": candle_start.isoformat()},
+    )
+
+
+def main():
+    act, candle_start = should_act(STRATEGY, CANDLE_MINUTES)
+    if not act:
+        print(json.dumps([{"strategy": STRATEGY, "action": "HOLD",
+                           "reason": "candle not closed yet"}]))
+        return
+
+    conn = get_conn()
+    signals = [analyse(coin, conn, candle_start) for coin in COINS]
+    conn.close()
+
+    mark_acted(STRATEGY, candle_start)
+    print(json.dumps(signals, indent=2))
+
+
+if __name__ == "__main__":
+    main()
+
+
+=== D:\dev\trading\strategy_fvg.py ===
+#!/usr/bin/env python3
+"""
+strategy_fvg.py — Fair Value Gap proximity strategy
+Timeframe : 5-min candles (synthetic from /market_chart days=1)
+Fires on  : 5-min candle close (candle gate enforced)
+
+Signal logic:
+  BUY  when price is within 1.5% ABOVE a bullish FVG midpoint
+       (price pulled back into demand zone — expect bounce)
+  SELL when price is within 1.5% BELOW a bearish FVG midpoint
+       (price rallied into supply zone — expect rejection)
+  HOLD otherwise (or if candle has not closed since last run)
+
+FVGs are read from the fvg_data JSONB column.
+"""
+import json
+from db import get_conn, fetch_recent, COINS, signal_envelope
+from candle_gate import should_act, mark_acted
+
+STRATEGY      = "fvg_proximity"
+CANDLE_MINUTES = 5     # 5-min candles (synthetic from market_chart)
+PROXIMITY_PCT = 1.5    # % distance from FVG midpoint to trigger
+
+
+def price_near_fvg(price: float, fvgs: list[dict]) -> tuple[str, float, dict | None]:
+    """
+    Returns (action, confidence, matching_fvg) or ("HOLD", 0, None).
+    Picks the highest-confidence match if multiple FVGs qualify.
+    """
+    best_action = "HOLD"
+    best_conf   = 0.0
+    best_fvg    = None
+
+    for fvg in fvgs:
+        ftype = fvg.get("type", "")
+        mid   = float(fvg.get("midpoint", 0))
+        if mid == 0:
+            continue
+        dist_pct = (price - mid) / mid * 100   # + = price above mid
+
+        if ftype == "bullish" and 0 <= dist_pct <= PROXIMITY_PCT:
+            # Price just above bullish FVG midpoint — buy the dip into demand
+            conf = round(1.0 - dist_pct / PROXIMITY_PCT, 2) * 0.9
+            if conf > best_conf:
+                best_action, best_conf, best_fvg = "BUY", conf, fvg
+
+        elif ftype == "bearish" and -PROXIMITY_PCT <= dist_pct <= 0:
+            # Price just below bearish FVG midpoint — sell into supply
+            conf = round(1.0 - abs(dist_pct) / PROXIMITY_PCT, 2) * 0.9
+            if conf > best_conf:
+                best_action, best_conf, best_fvg = "SELL", conf, fvg
+
+    return best_action, best_conf, best_fvg
+
+
+def analyse(coin: str, conn, candle_start) -> dict:
+    rows = fetch_recent(conn, coin, limit=3)
+    if not rows:
+        return signal_envelope(STRATEGY, coin, "HOLD", 0.0, "no data")
+
+    latest  = rows[0]
+    price   = float(latest["price"])
+    fvg_raw = latest.get("fvg_data")
+
+    if not fvg_raw:
+        return signal_envelope(STRATEGY, coin, "HOLD", 0.0,
+                               "no FVG data in latest row", {"price": price})
+
+    fvgs = fvg_raw if isinstance(fvg_raw, list) else []
+    if not fvgs:
+        return signal_envelope(STRATEGY, coin, "HOLD", 0.0,
+                               "FVG list empty", {"price": price})
+
+    action, conf, matched = price_near_fvg(price, fvgs)
+
+    if action != "HOLD" and matched:
+        ftype = matched["type"]
+        mid   = matched["midpoint"]
+        dist  = abs((price - mid) / mid * 100)
+        return signal_envelope(
+            STRATEGY, coin, action, conf,
+            f"Price {price:,.2f} within {dist:.2f}% of {ftype} FVG mid {mid:,.2f}",
+            {"price": price, "fvg": matched, "distance_pct": round(dist, 3),
+             "candle": candle_start.isoformat(), "fvg_count": len(fvgs)},
+        )
+
+    return signal_envelope(
+        STRATEGY, coin, "HOLD", 0.0,
+        f"Price {price:,.2f} not near any FVG ({len(fvgs)} gaps tracked)",
+        {"price": price, "fvg_count": len(fvgs), "candle": candle_start.isoformat()},
+    )
+
+
+def main():
+    act, candle_start = should_act(STRATEGY, CANDLE_MINUTES)
+    if not act:
+        print(json.dumps([{"strategy": STRATEGY, "action": "HOLD",
+                           "reason": "candle not closed yet"}]))
+        return
+
+    conn = get_conn()
+    signals = [analyse(coin, conn, candle_start) for coin in COINS]
+    conn.close()
+
+    mark_acted(STRATEGY, candle_start)
+    print(json.dumps(signals, indent=2))
+
+
+if __name__ == "__main__":
+    main()
+
+
+=== D:\dev\trading\strategy_momentum.py ===
+#!/usr/bin/env python3
+"""
+strategy_momentum.py — Trend-following via momentum + 24h change
+Timeframe : 4-hour candle gate (fires 6× per day)
+Fires on  : 4-hour candle close (candle gate enforced)
+
+Signal logic:
+  BUY  when momentum > +2% AND 24h change > +1.5%  (trend accelerating up)
+  SELL when momentum < -2% AND 24h change < -1.5%  (trend accelerating down)
+  HOLD otherwise (or if candle has not closed since last run)
+
+Uses last CROSSOVER_WINDOW snapshots to detect momentum crossover direction.
+At 5-min intervals, CROSSOVER_WINDOW=12 covers 1h — sufficient to detect
+fresh directional shifts within the 24h trade window.
+
+Fetch limit covers 288 rows (~24h) so change_24h validation is meaningful.
+"""
+import json
+from db import get_conn, fetch_recent, COINS, signal_envelope
+from candle_gate import should_act, mark_acted
+
+STRATEGY         = "momentum_trend"
+CANDLE_MINUTES   = 240    # 4h — fires 6× per day, meaningful for intraday momentum
+MOM_BUY          =  2.0   # % momentum threshold for BUY
+MOM_SELL         = -2.0
+CHANGE_BUY       =  1.5   # % 24h change to confirm uptrend
+CHANGE_SELL      = -1.5
+CROSSOVER_WINDOW =  12    # snapshots (~1h at 5-min intervals) to detect momentum direction change
+FETCH_LIMIT      = 300    # covers 24h+ of 5-min snapshots for robust change_24h context
+
+
+def detect_crossover(rows: list[dict]) -> str | None:
+    """Detect if momentum recently crossed zero — indicates a fresh trend shift."""
+    moms = [float(r["momentum"] or 0) for r in rows[:CROSSOVER_WINDOW]]
+    if len(moms) < 3:
+        return None
+    # Crossed from negative to positive (bullish)
+    if moms[0] > 0 and any(m < 0 for m in moms[2:]):
+        return "bullish_cross"
+    # Crossed from positive to negative (bearish)
+    if moms[0] < 0 and any(m > 0 for m in moms[2:]):
+        return "bearish_cross"
+    return None
+
+
+def analyse(coin: str, conn, candle_start) -> dict:
+    rows = fetch_recent(conn, coin, limit=FETCH_LIMIT)
+    if not rows:
+        return signal_envelope(STRATEGY, coin, "HOLD", 0.0, "no data")
+
+    latest   = rows[0]
+    momentum = float(latest["momentum"] or 0)
+    change   = float(latest["change_24h"] or 0)
+    price    = float(latest["price"])
+    volume   = float(latest["volume_24h"] or 0)
+    crossover = detect_crossover(rows)
+
+    # Only apply crossover bonus when its direction matches the signal direction
+    bull_bonus = 0.2 if crossover == "bullish_cross" else 0.0
+    bear_bonus = 0.2 if crossover == "bearish_cross" else 0.0
+
+    if momentum >= MOM_BUY and change >= CHANGE_BUY:
+        conf = min(momentum / 10 * 0.6 + change / 10 * 0.2 + bull_bonus, 1.0)
+        return signal_envelope(
+            STRATEGY, coin, "BUY", conf,
+            f"Momentum {momentum:+.2f}%, 24h {change:+.1f}% — uptrend confirmed",
+            {"momentum": momentum, "change_24h": change, "crossover": crossover,
+             "price": price, "volume_24h": volume, "candle": candle_start.isoformat()},
+        )
+
+    if momentum <= MOM_SELL and change <= CHANGE_SELL:
+        conf = min(abs(momentum) / 10 * 0.6 + abs(change) / 10 * 0.2 + bear_bonus, 1.0)
+        return signal_envelope(
+            STRATEGY, coin, "SELL", conf,
+            f"Momentum {momentum:+.2f}%, 24h {change:+.1f}% — downtrend confirmed",
+            {"momentum": momentum, "change_24h": change, "crossover": crossover,
+             "price": price, "volume_24h": volume, "candle": candle_start.isoformat()},
+        )
+
+    return signal_envelope(
+        STRATEGY, coin, "HOLD", 0.1,
+        f"Momentum {momentum:+.2f}% — no clear trend",
+        {"momentum": momentum, "change_24h": change, "price": price,
+         "candle": candle_start.isoformat()},
+    )
+
+
+def main():
+    act, candle_start = should_act(STRATEGY, CANDLE_MINUTES)
+    if not act:
+        print(json.dumps([{"strategy": STRATEGY, "action": "HOLD",
+                           "reason": "candle not closed yet"}]))
+        return
+
+    conn = get_conn()
+    signals = [analyse(coin, conn, candle_start) for coin in COINS]
+    conn.close()
+
+    mark_acted(STRATEGY, candle_start)
+    print(json.dumps(signals, indent=2))
+
+
+if __name__ == "__main__":
+    main()
+
+
+=== D:\dev\trading\candle_gate.py ===
+#!/usr/bin/env python3
+"""
+candle_gate.py — Shared candle-close gate for strategy agents.
+
+Prevents a strategy from firing multiple times within the same candle period
+when the orchestrator polls more frequently than the candle duration.
+
+Usage:
+    from candle_gate import should_act, mark_acted
+
+    act, candle_start = should_act("rsi_mean_reversion", candle_minutes=60)
+    if not act:
+        return signal_envelope(STRATEGY, coin, "HOLD", 0.0, "candle not closed yet")
+    # ... run analysis ...
+    mark_acted("rsi_mean_reversion", candle_start)
+"""
+
+import json
+import os
+from datetime import datetime, timezone
+
+# Stored alongside the strategy files
+_GATE_FILE = os.path.join(os.path.dirname(__file__), ".candle_gate.json")
+
+
+def current_candle_start(candle_minutes: int) -> datetime:
+    """Returns the UTC start timestamp of the current candle period."""
+    now = datetime.now(timezone.utc)
+    total_minutes = now.hour * 60 + now.minute
+    floored = (total_minutes // candle_minutes) * candle_minutes
+    return now.replace(
+        hour=floored // 60,
+        minute=floored % 60,
+        second=0,
+        microsecond=0,
+    )
+
+
+def _load() -> dict:
+    if os.path.exists(_GATE_FILE):
+        with open(_GATE_FILE) as f:
+            return json.load(f)
+    return {}
+
+
+def _save(data: dict) -> None:
+    with open(_GATE_FILE, "w") as f:
+        json.dump(data, f, indent=2)
+
+
+def should_act(strategy: str, candle_minutes: int) -> tuple[bool, datetime]:
+    """
+    Returns (should_act, candle_start).
+    - True  → new candle has opened since last run; proceed with analysis.
+    - False → already acted this candle; skip and return HOLD.
+    """
+    candle_start = current_candle_start(candle_minutes)
+    candle_ts = candle_start.isoformat()
+    last_acted = _load().get(strategy)
+    return (last_acted != candle_ts), candle_start
+
+
+def mark_acted(strategy: str, candle_start: datetime) -> None:
+    """Record that this strategy has acted for the given candle."""
+    data = _load()
+    data[strategy] = candle_start.isoformat()
+    _save(data)
+
+
+=== D:\dev\trading\orchestrator.py ===
+#!/usr/bin/env python3
+"""
+orchestrator.py — Runs all 4 strategies, applies quorum, outputs final signal
+Quorum rule: at least 2 of 4 strategies must agree on BUY or SELL
+             for a trade signal to be emitted. Otherwise HOLD.
+Output: JSON written to stdout (consumed by OpenClaw execution skill)
+        + human-readable summary to stderr
+Usage:  python orchestrator.py
+        python orchestrator.py --coin BTC        # single coin
+        python orchestrator.py --min-confidence 0.5
+        python orchestrator.py --json-only       # suppress summary
+"""
+import json
+import sys
+import argparse
+import importlib
+from datetime import datetime, timezone
+from db import get_conn, COINS
+from candle_gate import should_act, mark_acted
+
+# --- DB persistence for reuben_signals ---
+import psycopg2 as _psycopg2
+
+_AGENT_MAP = {
+    "rsi_mean_reversion": "Yen",
+    "momentum_trend": "Reuben",
+    "fvg_proximity": "Virgil",
+    "volume_spike": "Basher",
+}
+
+_STRATEGY_TIMEFRAME = {
+    "rsi_mean_reversion": "5min",
+    "momentum_trend":     "4h",
+    "fvg_proximity":      "5min",
+    "volume_spike":       "5min",
+}
+
+def _get_signal_type(strategy_name, action):
+    base = strategy_name.split("_")[0].upper() if strategy_name else "SIGNAL"
+    if action.upper() == "BUY":
+        return f"{base}_BULLISH"
+    elif action.upper() == "SELL":
+        return f"{base}_BEARISH"
+    else:
+        return f"{base}_NEUTRAL"
+
+def _persist_signals(signals):
+    """Insert signals into reuben_signals table."""
+    try:
+        conn = _psycopg2.connect(
+            host="localhost",
+            port=5432,
+            dbname="agentdb",
+            user="postgres",
+            password="1870506303979"
+        )
+        cur = conn.cursor()
+        for s in signals:
+            strategy = s.get("strategy", "unknown")
+            action = s.get("action", "HOLD")
+            confidence = float(s.get("confidence", 0.5))
+            reason = s.get("reason", "") or s.get("notes", "")
+            coins = s.get("coins", s.get("coin", None))
+            if coins is None:
+                coins_list = [s.get("symbol", "BTC")]
+            elif isinstance(coins, list):
+                coins_list = coins
+            else:
+                coins_list = [coins]
+            source = _AGENT_MAP.get(strategy, strategy)
+            signal_type = _get_signal_type(strategy, action)
+            timeframe = _STRATEGY_TIMEFRAME.get(strategy, "5min")
+            for coin in coins_list:
+                cur.execute(
+                    """INSERT INTO reuben_signals (symbol, signal_type, source, confidence, notes, timeframe)
+                       VALUES (%s, %s, %s, %s, %s, %s)""",
+                    (str(coin), signal_type, source, confidence, str(reason), timeframe)
+                )
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        print(f"[DB ERROR] {e}", file=__import__('sys').stderr)
+
+
+_AGENT_MODELS = {
+    "Yen":    "ollama/qwen2.5:7b",
+    "Reuben": "ollama/qwen2.5:7b",
+    "Virgil": "ollama/qwen2.5:7b",
+    "Basher": "ollama/qwen2.5:7b",
+}
+
+def _log_agent_usage():
+    """Log a usage row for each trading agent after every orchestrator run."""
+    try:
+        conn = _psycopg2.connect(
+            host="localhost", port=5432, dbname="agentdb",
+            user="postgres", password="1870506303979"
+        )
+        cur = conn.cursor()
+        task = f"Trading strategy run ({datetime.now(tz=timezone.utc).strftime('%Y-%m-%d %H:%M UTC')})"
+        for agent, model in _AGENT_MODELS.items():
+            cur.execute(
+                """INSERT INTO model_usage (agent, model, tokens_in, tokens_out, task, logged_at)
+                   VALUES (%s, %s, %s, %s, %s, NOW())""",
+                (agent, model, 0, 0, task)
+            )
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        print(f"[DB ERROR log_usage] {e}", file=__import__('sys').stderr)
+
+
+def _persist_quorum(coin: str, action: str, confidence: float, sources: list, agreeing_strategies: list = None):
+    """Write quorum decision row to reuben_signals with source='Quorum'."""
+    try:
+        conn = _psycopg2.connect(
+            host="localhost",
+            port=5432,
+            dbname="agentdb",
+            user="postgres",
+            password="1870506303979"
+        )
+        cur = conn.cursor()
+        signal_type = "BUY" if action == "BUY" else "SELL" if action == "SELL" else "HOLD"
+        notes = f"Quorum: {', '.join(sources)}" if sources else "Quorum"
+        # Use timeframe of agreeing strategies (prefer 5min; 4h only if all agree on momentum)
+        timeframes = [_STRATEGY_TIMEFRAME.get(s, "5min") for s in (agreeing_strategies or [])]
+        timeframe = "4h" if timeframes and all(t == "4h" for t in timeframes) else "5min"
+        cur.execute(
+            """INSERT INTO reuben_signals (symbol, signal_type, source, confidence, notes, timeframe)
+               VALUES (%s, %s, %s, %s, %s, %s)""",
+            (str(coin), signal_type, "Quorum", float(confidence), notes, timeframe)
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        print(f"[DB ERROR quorum] {e}", file=__import__('sys').stderr)
+
+
+STRATEGIES = [
+    "strategy_rsi",
+    "strategy_momentum",
+    "strategy_fvg",
+    "strategy_volume",
+]
+QUORUM           = 2     # minimum agreements needed
+MIN_CONF_DEFAULT = 0.3
+
+
+def build_candle_map() -> tuple[dict, dict]:
+    """
+    Load all strategy modules and check candle gate once per strategy.
+    Returns:
+        candle_map    — {module_name: candle_start}  (None = candle not closed yet)
+        module_cache  — {module_name: module}
+    """
+    candle_map   = {}
+    module_cache = {}
+    for name in STRATEGIES:
+        try:
+            mod = importlib.import_module(name)
+            module_cache[name] = mod
+            act, candle_start = should_act("orch_" + mod.STRATEGY, mod.CANDLE_MINUTES)
+            candle_map[name] = candle_start if act else None
+        except Exception as e:
+            # Import or attribute failure — treat as not ready
+            candle_map[name] = None
+            print(f"[orchestrator] Warning: could not load {name}: {e}", file=sys.stderr)
+    return candle_map, module_cache
+
+
+def run_all_strategies(conn, coin: str,
+                       candle_map: dict, module_cache: dict) -> list[dict]:
+    """
+    Run each strategy's analyse() for the given coin.
+    Strategies whose candle hasn't closed yet emit HOLD automatically.
+    candle_start is passed through to analyse() so strategies can embed it in meta.
+    """
+    signals = []
+    for name in STRATEGIES:
+        candle_start = candle_map.get(name)
+        mod          = module_cache.get(name)
+        try:
+            if candle_start is None or mod is None:
+                strategy_id = getattr(mod, "STRATEGY", name) if mod else name
+                signals.append({
+                    "strategy":    strategy_id,
+                    "coin":        coin,
+                    "action":      "HOLD",
+                    "confidence":  0.0,
+                    "reason":      "candle not closed yet",
+                    "meta":        {},
+                    "generated_at": datetime.now(tz=timezone.utc).isoformat(),
+                })
+            else:
+                sig = mod.analyse(coin, conn, candle_start)
+                signals.append(sig)
+        except Exception as e:
+            strategy_id = getattr(mod, "STRATEGY", name) if mod else name
+            signals.append({
+                "strategy":    strategy_id,
+                "coin":        coin,
+                "action":      "HOLD",
+                "confidence":  0.0,
+                "reason":      f"error: {e}",
+                "meta":        {},
+                "generated_at": datetime.now(tz=timezone.utc).isoformat(),
+            })
+    return signals
+
+
+def mark_all_acted(candle_map: dict, module_cache: dict) -> None:
+    """Mark candle gate for every strategy that actually ran this cycle."""
+    for name, candle_start in candle_map.items():
+        if candle_start is None:
+            continue
+        mod = module_cache.get(name)
+        if mod:
+            try:
+                mark_acted("orch_" + mod.STRATEGY, candle_start)
+            except Exception as e:
+                print(f"[orchestrator] Warning: mark_acted failed for {name}: {e}",
+                      file=sys.stderr)
+
+
+def apply_quorum(signals: list[dict], min_conf: float) -> dict:
+    """
+    Count BUY / SELL votes from signals above min_conf threshold.
+    Returns final decision dict.
+    """
+    votes = {"BUY": [], "SELL": [], "HOLD": []}
+    for s in signals:
+        action = s["action"]
+        conf   = s["confidence"]
+        if conf >= min_conf or action == "HOLD":
+            votes[action].append(s)
+
+    buy_count  = len(votes["BUY"])
+    sell_count = len(votes["SELL"])
+
+    # Weighted confidence = average of agreeing signals
+    def avg_conf(sigs):
+        return round(sum(s["confidence"] for s in sigs) / len(sigs), 3) if sigs else 0
+
+    if buy_count >= QUORUM and buy_count > sell_count:
+        action   = "BUY"
+        agreeing = votes["BUY"]
+    elif sell_count >= QUORUM and sell_count > buy_count:
+        action   = "SELL"
+        agreeing = votes["SELL"]
+    else:
+        action   = "HOLD"
+        agreeing = votes["HOLD"] + votes["BUY"] + votes["SELL"]
+
+    return {
+        "action":         action,
+        "quorum_met":     action in ("BUY", "SELL"),
+        "votes":          {"BUY": buy_count, "SELL": sell_count,
+                           "HOLD": len(votes["HOLD"])},
+        "avg_confidence": avg_conf(agreeing),
+        "agreeing_strategies": [s["strategy"] for s in agreeing
+                                 if s["action"] == action],
+        "dissenting_strategies": [s["strategy"] for s in signals
+                                   if s["action"] != action],
+    }
+
+
+def build_output(coin: str, signals: list[dict], decision: dict) -> dict:
+    return {
+        "coin":         coin,
+        "decision":     decision,
+        "signals":      signals,
+        "evaluated_at": datetime.now(tz=timezone.utc).isoformat(),
+    }
+
+
+def print_summary(results: list[dict], file=sys.stderr):
+    now = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    sep = "=" * 62
+    print(f"\n{sep}", file=file)
+    print(f"  Trading Signal Report — {now}", file=file)
+    print(f"{sep}", file=file)
+
+    for r in results:
+        coin   = r["coin"]
+        d      = r["decision"]
+        action = d["action"]
+        conf   = d["avg_confidence"]
+        votes  = d["votes"]
+        marker = "***" if d["quorum_met"] else "   "
+
+        print(f"\n  {marker} {coin}  →  {action}  "
+              f"(conf: {conf:.2f}  |  votes B:{votes['BUY']} S:{votes['SELL']} H:{votes['HOLD']})",
+              file=file)
+
+        for s in r["signals"]:
+            icon = {"BUY": "^", "SELL": "v", "HOLD": "-"}.get(s["action"], "?")
+            print(f"       {icon} [{s['strategy']:<22}] "
+                  f"{s['action']:<4}  conf:{s['confidence']:.2f}  {s['reason']}",
+                  file=file)
+
+    # Overall summary
+    trade_signals = [r for r in results if r["decision"]["quorum_met"]]
+    print(f"\n{'-' * 62}", file=file)
+    if trade_signals:
+        for r in trade_signals:
+            d = r["decision"]
+            print(f"  SIGNAL: {r['coin']} {d['action']} "
+                  f"— agreed by: {', '.join(d['agreeing_strategies'])}",
+                  file=file)
+    else:
+        print("  No trade signals — quorum not met for any coin.", file=file)
+    print(f"{sep}\n", file=file)
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--coin",           default=None,
+                        help="Run for single coin only (BTC/ETH/SOL)")
+    parser.add_argument("--min-confidence", type=float,
+                        default=MIN_CONF_DEFAULT,
+                        help=f"Min confidence to count a vote (default {MIN_CONF_DEFAULT})")
+    parser.add_argument("--json-only",      action="store_true",
+                        help="Suppress human-readable summary")
+    args = parser.parse_args()
+
+    target_coins = [args.coin.upper()] if args.coin else COINS
+
+    # Check candle gates and load modules once — before opening DB connection
+    candle_map, module_cache = build_candle_map()
+
+    conn    = get_conn()
+    results = []
+    for coin in target_coins:
+        signals  = run_all_strategies(conn, coin, candle_map, module_cache)
+        decision = apply_quorum(signals, args.min_confidence)
+        results.append(build_output(coin, signals, decision))
+    conn.close()
+
+    # Mark candle gates after all coins are processed
+    mark_all_acted(candle_map, module_cache)
+
+    # Persist only meaningful signals:
+    # - skip candle-gated HOLDs (no analysis ran)
+    # - skip HOLD/NEUTRAL with confidence=0.0 (no signal value; would overwrite real data)
+    all_signals = [
+        s for r in results for s in r["signals"]
+        if not (s.get("action") == "HOLD" and
+                "candle not closed" in (s.get("reason") or ""))
+        and not (s.get("action") == "HOLD" and float(s.get("confidence") or 0) == 0.0)
+    ]
+    _persist_signals(all_signals)
+
+    # Persist quorum decisions — only if at least one strategy produced a meaningful signal
+    active_signals = [
+        s for r in results for s in r["signals"]
+        if not (s.get("action") == "HOLD" and
+                "candle not closed" in (s.get("reason") or ""))
+        and not (s.get("action") == "HOLD" and float(s.get("confidence") or 0) == 0.0)
+    ]
+    if active_signals:
+        for r in results:
+            decision = r.get("decision", {})
+            coin = r.get("coin", "")
+            action = decision.get("action", "HOLD")
+            confidence = float(decision.get("avg_confidence", 0.0))
+            # Skip quorum HOLD with 0 confidence — no value, would overwrite real data
+            if action == "HOLD" and confidence == 0.0:
+                continue
+            agreeing_strats = decision.get("agreeing_strategies", [])
+            sources = [_AGENT_MAP.get(s, s) for s in agreeing_strats]
+            _persist_quorum(coin, action, confidence, sources, agreeing_strats)
+
+    # Log usage for all 4 strategy agents (pure Python — tokens are 0, cost is $0)
+    _log_agent_usage()
+
+    # Machine-readable output → stdout
+    print(json.dumps(results, indent=2))
+
+    # Human-readable summary → stderr (OpenClaw sees stdout only)
+    if not args.json_only:
+        print_summary(results)
+
+
+if __name__ == "__main__":
+    main()
+
+

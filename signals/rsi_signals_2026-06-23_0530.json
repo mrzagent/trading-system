@@ -1,0 +1,29 @@
+[
+  {
+    "strategy": "rsi_mean_reversion",
+    "coin": "BTC",
+    "action": "BUY",
+    "confidence": 1.0,
+    "reason": "RSI(15m) 13.2 oversold - both TFs oversold (1h≈30.7)",
+    "price": 63354.0,
+    "generated_at": "2026-06-23T05:31:08.536724+00:00"
+  },
+  {
+    "strategy": "rsi_mean_reversion",
+    "coin": "ETH",
+    "action": "BUY",
+    "confidence": 1.0,
+    "reason": "RSI(15m) 17.6 oversold - both TFs oversold (1h≈34.9)",
+    "price": 1709.64,
+    "generated_at": "2026-06-23T05:31:08.539039+00:00"
+  },
+  {
+    "strategy": "rsi_mean_reversion",
+    "coin": "SOL",
+    "action": "BUY",
+    "confidence": 0.65,
+    "reason": "RSI(15m) 22.6 oversold - 15m only (1h≈46.0)",
+    "price": 71.12,
+    "generated_at": "2026-06-23T05:31:08.541268+00:00"
+  }
+]

@@ -1,0 +1,294 @@
+#!/usr/bin/env python3
+"""
+orchestrator.py — Runs all 4 strategies, applies quorum, outputs final signal
+Quorum rule: at least 2 of 4 strategies must agree on BUY or SELL
+             for a trade signal to be emitted. Otherwise HOLD.
+Output: JSON written to stdout (consumed by OpenClaw execution skill)
+        + human-readable summary to stderr
+Usage:  python orchestrator.py
+        python orchestrator.py --coin BTC        # single coin
+        python orchestrator.py --min-confidence 0.5
+        python orchestrator.py --json-only       # suppress summary
+"""
+import json
+import sys
+import argparse
+import importlib
+from datetime import datetime, timezone
+from db import get_conn, COINS
+from candle_gate import should_act, mark_acted
+
+# --- DB persistence for reuben_signals ---
+import psycopg2 as _psycopg2
+
+_AGENT_MAP = {
+    "rsi_mean_reversion": "Yen",
+    "momentum_trend": "Basher",
+    "fvg_proximity": "Virgil",
+    "volume_spike": "Reuben",
+}
+
+def _get_signal_type(strategy_name, action):
+    base = strategy_name.split("_")[0].upper() if strategy_name else "SIGNAL"
+    if action.upper() == "BUY":
+        return f"{base}_BULLISH"
+    elif action.upper() == "SELL":
+        return f"{base}_BEARISH"
+    else:
+        return f"{base}_NEUTRAL"
+
+def _persist_signals(signals):
+    """Insert signals into reuben_signals table."""
+    try:
+        conn = _psycopg2.connect(
+            host="localhost",
+            port=5432,
+            dbname="agentdb",
+            user="postgres",
+            password="1870506303979"
+        )
+        cur = conn.cursor()
+        for s in signals:
+            strategy = s.get("strategy", "unknown")
+            action = s.get("action", "HOLD")
+            confidence = float(s.get("confidence", 0.5))
+            reason = s.get("reason", "") or s.get("notes", "")
+            coins = s.get("coins", s.get("coin", None))
+            if coins is None:
+                coins_list = [s.get("symbol", "BTC")]
+            elif isinstance(coins, list):
+                coins_list = coins
+            else:
+                coins_list = [coins]
+            source = _AGENT_MAP.get(strategy, strategy)
+            signal_type = _get_signal_type(strategy, action)
+            for coin in coins_list:
+                cur.execute(
+                    """INSERT INTO reuben_signals (symbol, signal_type, source, confidence, notes)
+                       VALUES (%s, %s, %s, %s, %s)""",
+                    (str(coin), signal_type, source, confidence, str(reason))
+                )
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        print(f"[DB ERROR] {e}", file=__import__('sys').stderr)
+
+
+STRATEGIES = [
+    "strategy_rsi",
+    "strategy_momentum",
+    "strategy_fvg",
+    "strategy_volume",
+]
+QUORUM           = 2     # minimum agreements needed
+MIN_CONF_DEFAULT = 0.3
+
+
+def build_candle_map() -> tuple[dict, dict]:
+    """
+    Load all strategy modules and check candle gate once per strategy.
+    Returns:
+        candle_map    — {module_name: candle_start}  (None = candle not closed yet)
+        module_cache  — {module_name: module}
+    """
+    candle_map   = {}
+    module_cache = {}
+    for name in STRATEGIES:
+        try:
+            mod = importlib.import_module(name)
+            module_cache[name] = mod
+            act, candle_start = should_act("orch_" + mod.STRATEGY, mod.CANDLE_MINUTES)
+            candle_map[name] = candle_start if act else None
+        except Exception as e:
+            # Import or attribute failure — treat as not ready
+            candle_map[name] = None
+            print(f"[orchestrator] Warning: could not load {name}: {e}", file=sys.stderr)
+    return candle_map, module_cache
+
+
+def run_all_strategies(conn, coin: str,
+                       candle_map: dict, module_cache: dict) -> list[dict]:
+    """
+    Run each strategy's analyse() for the given coin.
+    Strategies whose candle hasn't closed yet emit HOLD automatically.
+    candle_start is passed through to analyse() so strategies can embed it in meta.
+    """
+    signals = []
+    for name in STRATEGIES:
+        candle_start = candle_map.get(name)
+        mod          = module_cache.get(name)
+        try:
+            if candle_start is None or mod is None:
+                strategy_id = getattr(mod, "STRATEGY", name) if mod else name
+                signals.append({
+                    "strategy":    strategy_id,
+                    "coin":        coin,
+                    "action":      "HOLD",
+                    "confidence":  0.0,
+                    "reason":      "candle not closed yet",
+                    "meta":        {},
+                    "generated_at": datetime.now(tz=timezone.utc).isoformat(),
+                })
+            else:
+                sig = mod.analyse(coin, conn, candle_start)
+                signals.append(sig)
+        except Exception as e:
+            strategy_id = getattr(mod, "STRATEGY", name) if mod else name
+            signals.append({
+                "strategy":    strategy_id,
+                "coin":        coin,
+                "action":      "HOLD",
+                "confidence":  0.0,
+                "reason":      f"error: {e}",
+                "meta":        {},
+                "generated_at": datetime.now(tz=timezone.utc).isoformat(),
+            })
+    return signals
+
+
+def mark_all_acted(candle_map: dict, module_cache: dict) -> None:
+    """Mark candle gate for every strategy that actually ran this cycle."""
+    for name, candle_start in candle_map.items():
+        if candle_start is None:
+            continue
+        mod = module_cache.get(name)
+        if mod:
+            try:
+                mark_acted("orch_" + mod.STRATEGY, candle_start)
+            except Exception as e:
+                print(f"[orchestrator] Warning: mark_acted failed for {name}: {e}",
+                      file=sys.stderr)
+
+
+def apply_quorum(signals: list[dict], min_conf: float) -> dict:
+    """
+    Count BUY / SELL votes from signals above min_conf threshold.
+    Returns final decision dict.
+    """
+    votes = {"BUY": [], "SELL": [], "HOLD": []}
+    for s in signals:
+        action = s["action"]
+        conf   = s["confidence"]
+        if conf >= min_conf or action == "HOLD":
+            votes[action].append(s)
+
+    buy_count  = len(votes["BUY"])
+    sell_count = len(votes["SELL"])
+
+    # Weighted confidence = average of agreeing signals
+    def avg_conf(sigs):
+        return round(sum(s["confidence"] for s in sigs) / len(sigs), 3) if sigs else 0
+
+    if buy_count >= QUORUM and buy_count > sell_count:
+        action   = "BUY"
+        agreeing = votes["BUY"]
+    elif sell_count >= QUORUM and sell_count > buy_count:
+        action   = "SELL"
+        agreeing = votes["SELL"]
+    else:
+        action   = "HOLD"
+        agreeing = votes["HOLD"] + votes["BUY"] + votes["SELL"]
+
+    return {
+        "action":         action,
+        "quorum_met":     action in ("BUY", "SELL"),
+        "votes":          {"BUY": buy_count, "SELL": sell_count,
+                           "HOLD": len(votes["HOLD"])},
+        "avg_confidence": avg_conf(agreeing),
+        "agreeing_strategies": [s["strategy"] for s in agreeing
+                                 if s["action"] == action],
+        "dissenting_strategies": [s["strategy"] for s in signals
+                                   if s["action"] != action],
+    }
+
+
+def build_output(coin: str, signals: list[dict], decision: dict) -> dict:
+    return {
+        "coin":         coin,
+        "decision":     decision,
+        "signals":      signals,
+        "evaluated_at": datetime.now(tz=timezone.utc).isoformat(),
+    }
+
+
+def print_summary(results: list[dict], file=sys.stderr):
+    now = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    sep = "=" * 62
+    print(f"\n{sep}", file=file)
+    print(f"  Trading Signal Report — {now}", file=file)
+    print(f"{sep}", file=file)
+
+    for r in results:
+        coin   = r["coin"]
+        d      = r["decision"]
+        action = d["action"]
+        conf   = d["avg_confidence"]
+        votes  = d["votes"]
+        marker = "***" if d["quorum_met"] else "   "
+
+        print(f"\n  {marker} {coin}  →  {action}  "
+              f"(conf: {conf:.2f}  |  votes B:{votes['BUY']} S:{votes['SELL']} H:{votes['HOLD']})",
+              file=file)
+
+        for s in r["signals"]:
+            icon = {"BUY": "^", "SELL": "v", "HOLD": "-"}.get(s["action"], "?")
+            print(f"       {icon} [{s['strategy']:<22}] "
+                  f"{s['action']:<4}  conf:{s['confidence']:.2f}  {s['reason']}",
+                  file=file)
+
+    # Overall summary
+    trade_signals = [r for r in results if r["decision"]["quorum_met"]]
+    print(f"\n{'-' * 62}", file=file)
+    if trade_signals:
+        for r in trade_signals:
+            d = r["decision"]
+            print(f"  SIGNAL: {r['coin']} {d['action']} "
+                  f"— agreed by: {', '.join(d['agreeing_strategies'])}",
+                  file=file)
+    else:
+        print("  No trade signals — quorum not met for any coin.", file=file)
+    print(f"{sep}\n", file=file)
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--coin",           default=None,
+                        help="Run for single coin only (BTC/ETH/SOL)")
+    parser.add_argument("--min-confidence", type=float,
+                        default=MIN_CONF_DEFAULT,
+                        help=f"Min confidence to count a vote (default {MIN_CONF_DEFAULT})")
+    parser.add_argument("--json-only",      action="store_true",
+                        help="Suppress human-readable summary")
+    args = parser.parse_args()
+
+    target_coins = [args.coin.upper()] if args.coin else COINS
+
+    # Check candle gates and load modules once — before opening DB connection
+    candle_map, module_cache = build_candle_map()
+
+    conn    = get_conn()
+    results = []
+    for coin in target_coins:
+        signals  = run_all_strategies(conn, coin, candle_map, module_cache)
+        decision = apply_quorum(signals, args.min_confidence)
+        results.append(build_output(coin, signals, decision))
+    conn.close()
+
+    # Mark candle gates after all coins are processed
+    mark_all_acted(candle_map, module_cache)
+
+    # Persist all signals to DB
+    all_signals = [s for r in results for s in r["signals"]]
+    _persist_signals(all_signals)
+
+    # Machine-readable output → stdout
+    print(json.dumps(results, indent=2))
+
+    # Human-readable summary → stderr (OpenClaw sees stdout only)
+    if not args.json_only:
+        print_summary(results)
+
+
+if __name__ == "__main__":
+    main()

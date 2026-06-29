@@ -1,0 +1,15 @@
+{
+  "strategy": "fvg_proximity",
+  "coin": "BTC",
+  "action": "BUY",
+  "confidence": 0.85,
+  "reason": "Example signal - price near FVG",
+  "meta": {
+    "price": 64127.0,
+    "fvg": {
+      "type": "bullish",
+      "midpoint": 64101.42
+    }
+  },
+  "generated_at": "2026-06-14T22:15:32.611128"
+}

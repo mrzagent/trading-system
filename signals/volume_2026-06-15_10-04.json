@@ -1,0 +1,35 @@
+[
+  {
+    "strategy": "volume_spike",
+    "coin": "BTC",
+    "action": "SELL",
+    "confidence": 0.596,
+    "reason": "Volume spike 1.5x avg with -3.21% 4h move — selling pressure",
+    "price": 65569.0,
+    "volume_ratio": 1.549,
+    "candle": "2026-06-15T10:00:00+00:00",
+    "generated_at": "2026-06-15T10:04:35"
+  },
+  {
+    "strategy": "volume_spike",
+    "coin": "ETH",
+    "action": "SELL",
+    "confidence": 0.653,
+    "reason": "Volume spike 1.7x avg with -3.53% 4h move — selling pressure",
+    "price": 1718.21,
+    "volume_ratio": 1.697,
+    "candle": "2026-06-15T10:00:00+00:00",
+    "generated_at": "2026-06-15T10:04:35"
+  },
+  {
+    "strategy": "volume_spike",
+    "coin": "SOL",
+    "action": "SELL",
+    "confidence": 0.673,
+    "reason": "Volume spike 1.8x avg with -5.69% 4h move — selling pressure",
+    "price": 71.17,
+    "volume_ratio": 1.751,
+    "candle": "2026-06-15T10:00:00+00:00",
+    "generated_at": "2026-06-15T10:04:35"
+  }
+]
