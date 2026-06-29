@@ -1,1 +1,0 @@
-[{"id": "SOL_LONG", "coin": "SOL", "side": "LONG", "size": 0.73, "entryPrice": 68.391, "markPrice": 68.391, "stopLoss": 0.0, "takeProfit": 0.0, "unrealizedPnl": 0.48983, "openedAt": null}, {"id": "ETH_LONG", "coin": "ETH", "side": "LONG", "size": 0.0303, "entryPrice": 1646.8, "markPrice": 1646.8, "stopLoss": 0.0, "takeProfit": 0.0, "unrealizedPnl": 0.53934, "openedAt": null}]
