@@ -12669,3 +12669,6 @@ Take Profits: 1 orders placed
 =================================
             
 2026-06-29 15:48:24,609 - websocket - ERROR - fin=1 opcode=8 data=b'\x03\xe8Expired' - goodbye
+2026-06-29 16:03:50,042 - trade_executor - INFO - TradeExecutor using provided risk config: $1000.00 capital, $20.00 risk per trade (2.0%), 3.0x leverage
+2026-06-29 16:03:53,155 - trade_executor - INFO - HyperLiquid SDK initialized successfully (testnet)
+2026-06-29 16:03:53,157 - trade_executor - INFO - Loaded 3 open trades from state
